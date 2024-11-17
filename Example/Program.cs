@@ -9,7 +9,7 @@ Directory.SetCurrentDirectory(AppContext.BaseDirectory);
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddSqliteConfiguration();
-builder.Services.AddSingleton(p => ((IConfigurationRoot)p.GetRequiredService<IConfiguration>()).GetConfigurationOperator());
+builder.Services.AddSingleton(static p => ((IConfigurationRoot)p.GetRequiredService<IConfiguration>()).GetConfigurationOperator());
 
 // Add services to the container.
 builder.Services.AddFeatureManagement();
