@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="Analyzers.ruleset" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Extensions.Configuration.Sqlite.sln.DotSettings" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="Extensions.Configuration.Sqlite/Extensions.Configuration.Sqlite.csproj" />
+  <Project Path="Example/Example.csproj" />
+</Solution>
