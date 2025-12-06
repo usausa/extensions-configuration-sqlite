@@ -8,6 +8,12 @@ using Microsoft.Extensions.Configuration;
 #pragma warning disable CA2100
 internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConfigurationOperator
 {
+#if  NET9_0_OR_GREATER
+    private readonly Lock sync = new();
+#else
+    private readonly object sync = new();
+#endif
+
     private readonly string connectionString;
 
     private readonly string selectSql;
@@ -49,7 +55,10 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
             data[reader.GetString(0)] = reader.IsDBNull(1) ? null : reader.GetString(1);
         }
 
-        Data = data;
+        lock (sync)
+        {
+            Data = data;
+        }
     }
 
     public async ValueTask UpdateAsync(string key, object? value)
@@ -73,11 +82,16 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
         await using var con = new SqliteConnection(connectionString);
 #pragma warning restore CA2007
         await con.OpenAsync().ConfigureAwait(false);
+#pragma warning disable CA2007
+        await using var tx = await con.BeginTransactionAsync().ConfigureAwait(false);
+#pragma warning restore CA2007
 
         foreach (var pair in source)
         {
             await UpdateAsync(con, pair.Key, pair.Value?.ToString()).ConfigureAwait(false);
         }
+
+        await tx.CommitAsync().ConfigureAwait(false);
 
         OnReload();
     }
@@ -101,7 +115,10 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
-        Data[key] = value;
+        lock (sync)
+        {
+            Data[key] = value;
+        }
     }
 }
 #pragma warning restore CA2100
