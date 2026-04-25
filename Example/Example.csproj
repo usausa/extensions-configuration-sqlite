@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Extensions.Configuration.Sqlite\Extensions.Configuration.Sqlite.csproj" />
+    <ProjectReference Include="..\Mofucat.SqliteConfiguration\Mofucat.SqliteConfiguration.csproj" />
   </ItemGroup>
 
 </Project>

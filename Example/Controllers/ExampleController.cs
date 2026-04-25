@@ -1,10 +1,10 @@
 namespace Example.Controllers;
 
-using Extensions.Configuration.Sqlite;
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
+
+using Mofucat.SqliteConfiguration;
 
 [ApiController]
 [Route("[controller]/[action]")]

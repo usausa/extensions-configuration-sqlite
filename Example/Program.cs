@@ -1,8 +1,8 @@
 using Example;
 
-using Extensions.Configuration.Sqlite;
-
 using Microsoft.FeatureManagement;
+
+using Mofucat.SqliteConfiguration;
 
 Directory.SetCurrentDirectory(AppContext.BaseDirectory);
 

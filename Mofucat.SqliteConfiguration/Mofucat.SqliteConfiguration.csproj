@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>Extensions.Configuration.Sqlite</PackageId>
-    <Title>Extensions.Configuration.Sqlite</Title>
+    <PackageId>Mofucat.SqliteConfiguration</PackageId>
+    <Title>Mofucat.SqliteConfiguration</Title>
     <Description>.NET Configuration Extensions for SQLite.</Description>
     <PackageTags>configuration</PackageTags>
   </PropertyGroup>

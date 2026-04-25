@@ -1,4 +1,4 @@
-namespace Extensions.Configuration.Sqlite;
+namespace Mofucat.SqliteConfiguration;
 
 using System.Data.Common;
 

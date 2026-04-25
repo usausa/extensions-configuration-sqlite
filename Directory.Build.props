@@ -18,9 +18,9 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Authors>machi_pon</Authors>
-    <Copyright>Copyright (c) 2024 machi_pon</Copyright>
+    <Copyright>Copyright (c) 2026 machi_pon</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/usausa/extensions-configuration-sqlite</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/usausa/mofucat-sqlite-configuration</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 

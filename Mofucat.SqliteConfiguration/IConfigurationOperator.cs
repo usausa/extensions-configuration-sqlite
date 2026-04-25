@@ -1,4 +1,4 @@
-namespace Extensions.Configuration.Sqlite;
+namespace Mofucat.SqliteConfiguration;
 
 public interface IConfigurationOperator
 {
