@@ -4,10 +4,8 @@ using Microsoft.Extensions.Configuration;
 
 internal sealed class SqliteConfigurationSource : IConfigurationSource
 {
-    public string Path { get; set; } = default!;
-
-    public string Table { get; set; } = default!;
+    public SqliteConfigurationOptions Options { get; set; } = new();
 
     public IConfigurationProvider Build(IConfigurationBuilder builder) =>
-        new SqliteConfigurationProvider(Path, Table);
+        new SqliteConfigurationProvider(Options);
 }

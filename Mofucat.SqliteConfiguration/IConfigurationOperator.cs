@@ -7,4 +7,12 @@ public interface IConfigurationOperator
     ValueTask BulkUpdateAsync(params KeyValuePair<string, object?>[] source);
 
     ValueTask BulkUpdateAsync(IEnumerable<KeyValuePair<string, object?>> source);
+
+    ValueTask DeleteAsync(string key);
+
+    ValueTask BulkDeleteAsync(params string[] keys);
+
+    ValueTask BulkDeleteAsync(IEnumerable<string> keys);
+
+    ValueTask ReloadAsync();
 }

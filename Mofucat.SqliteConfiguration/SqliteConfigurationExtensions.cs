@@ -5,14 +5,26 @@ using Microsoft.Extensions.Configuration;
 public static class SqliteConfigurationExtensions
 {
     public static IConfigurationBuilder AddSqliteConfiguration(
+        this IConfigurationBuilder builder) =>
+        builder.AddSqliteConfiguration(new SqliteConfigurationOptions());
+
+    public static IConfigurationBuilder AddSqliteConfiguration(
         this IConfigurationBuilder builder,
-        string path = "setting.db",
-        string table = "setting")
+        Action<SqliteConfigurationOptions> configure)
+    {
+        var options = new SqliteConfigurationOptions();
+        configure(options);
+
+        return builder.AddSqliteConfiguration(options);
+    }
+
+    public static IConfigurationBuilder AddSqliteConfiguration(
+        this IConfigurationBuilder builder,
+        SqliteConfigurationOptions options)
     {
         return builder.Add(new SqliteConfigurationSource
         {
-            Path = path,
-            Table = table
+            Options = options
         });
     }
 

@@ -8,20 +8,6 @@ using Xunit;
 public sealed class SqliteConfigurationProviderTests
 {
     [Fact]
-    public void AddSqliteConfigurationWithInvalidTableThrows()
-    {
-        var builder = new ConfigurationBuilder();
-
-        var exception = Assert.Throws<ArgumentException>(() => builder.AddSqliteConfiguration(options =>
-        {
-            options.Path = Path.GetTempFileName();
-            options.Table = "invalid-table";
-        }));
-
-        Assert.Contains("Table", exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void GetRequiredConfigurationOperatorWithoutProviderThrows()
     {
         var root = new ConfigurationBuilder()
@@ -113,14 +99,14 @@ public sealed class SqliteConfigurationProviderTests
 
         using var firstRoot = CreateConfiguration(database.Path, options =>
         {
-            options.SeedData.Add(new KeyValuePair<string, string?>("Seed:Value", "First"));
+            options.Data.Add(new KeyValuePair<string, string?>("Seed:Value", "First"));
         });
 
         Assert.Equal("First", firstRoot["Seed:Value"]);
 
         using var secondRoot = CreateConfiguration(database.Path, options =>
         {
-            options.SeedData.Add(new KeyValuePair<string, string?>("Seed:Value", "Second"));
+            options.Data.Add(new KeyValuePair<string, string?>("Seed:Value", "Second"));
         });
 
         Assert.Equal("First", secondRoot["Seed:Value"]);

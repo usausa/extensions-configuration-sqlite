@@ -5,6 +5,9 @@
   <Folder Name="/Library/">
     <Project Path="Mofucat.SqliteConfiguration/Mofucat.SqliteConfiguration.csproj" />
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Mofucat.SqliteConfiguration.Tests/Mofucat.SqliteConfiguration.Tests.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />

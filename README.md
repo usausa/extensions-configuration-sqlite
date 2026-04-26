@@ -24,9 +24,14 @@ dotnet add package Mofucat.SqliteConfiguration
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddSqliteConfiguration(
-    path: "setting.db",
-    table: "setting");
+builder.Configuration.AddSqliteConfiguration(options =>
+{
+    options.Path = "setting.db";
+    options.Table = "setting";
+    options.SeedData.Add(new KeyValuePair<string, string?>("Dynamic:Value1", "InitialValue"));
+});
+
+builder.Services.AddSqliteConfigurationOperator();
 ```
 
 ### Read configuration
@@ -38,7 +43,7 @@ var value = configuration["MyKey"];
 ### Update configuration at runtime
 
 ```csharp
-var op = ((IConfigurationRoot)configuration).GetConfigurationOperator();
+var op = ((IConfigurationRoot)configuration).GetRequiredConfigurationOperator();
 
 // Update a single value
 await op.UpdateAsync("MyKey", "NewValue");
@@ -47,6 +52,12 @@ await op.UpdateAsync("MyKey", "NewValue");
 await op.BulkUpdateAsync(
     new KeyValuePair<string, object?>("Key1", "Value1"),
     new KeyValuePair<string, object?>("Key2", "Value2"));
+
+// Delete a single key
+await op.DeleteAsync("Key2");
+
+// Reload from the database
+await op.ReloadAsync();
 ```
 
 ## License

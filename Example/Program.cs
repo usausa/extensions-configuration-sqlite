@@ -8,8 +8,13 @@ Directory.SetCurrentDirectory(AppContext.BaseDirectory);
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddSqliteConfiguration();
-builder.Services.AddSingleton(static p => ((IConfigurationRoot)p.GetRequiredService<IConfiguration>()).GetConfigurationOperator());
+builder.Configuration.AddSqliteConfiguration(options =>
+{
+    options.Path = "setting.db";
+    options.Table = "setting";
+});
+builder.Services.AddSingleton<IConfigurationOperator>(static p =>
+    ((IConfigurationRoot)p.GetRequiredService<IConfiguration>()).GetConfigurationOperator());
 
 // Add services to the container.
 builder.Services.AddFeatureManagement();
