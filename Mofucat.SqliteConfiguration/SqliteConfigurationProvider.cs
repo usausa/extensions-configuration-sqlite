@@ -22,6 +22,10 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
     private readonly string updateSql;
     private readonly string deleteSql;
 
+    //--------------------------------------------------------------------------------
+    // Constructor
+    //--------------------------------------------------------------------------------
+
     public SqliteConfigurationProvider(SqliteConfigurationOptions options)
     {
         this.options = options;
@@ -45,6 +49,10 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
     private static string QuoteIdentifier(string value) =>
         $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
+    //--------------------------------------------------------------------------------
+    // Override
+    //--------------------------------------------------------------------------------
+
     public override void Load()
     {
         var data = LoadData();
@@ -54,6 +62,10 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
             Data = data;
         }
     }
+
+    //--------------------------------------------------------------------------------
+    // Operator
+    //--------------------------------------------------------------------------------
 
     public async ValueTask UpdateAsync(string key, object? value)
     {
@@ -79,6 +91,7 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
     public async ValueTask BulkUpdateAsync(IEnumerable<KeyValuePair<string, object?>> source)
     {
+        // TODO remove ToArray
         var entries = source.Select(static pair => new KeyValuePair<string, string?>(pair.Key, pair.Value?.ToString())).ToArray();
         if (entries.Length == 0)
         {
@@ -133,8 +146,7 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
     public async ValueTask BulkDeleteAsync(IEnumerable<string> keys)
     {
-        ArgumentNullException.ThrowIfNull(keys);
-
+        // TODO remove ToArray
         var keyArray = keys.ToArray();
         if (keyArray.Length == 0)
         {
@@ -179,6 +191,10 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
         OnReload();
     }
 
+    //--------------------------------------------------------------------------------
+    // Helper
+    //--------------------------------------------------------------------------------
+
     private static void AddParameter(DbCommand command, string name, object? value)
     {
         var parameter = command.CreateParameter();
@@ -200,7 +216,7 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
             _ = cmd.ExecuteNonQuery();
         }
 
-        if (!tableExists && options.Data.Count > 0)
+        if (!tableExists && (options.Data.Count > 0))
         {
             using var tx = con.BeginTransaction();
             foreach (var pair in options.Data)
@@ -210,6 +226,15 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
             tx.Commit();
         }
+    }
+
+    private bool TableExists(SqliteConnection connection)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = @Name)";
+        AddParameter(cmd, "Name", options.Table);
+
+        return cmd.ExecuteScalar() is 1L;
     }
 
     private Dictionary<string, string?> LoadData()
@@ -256,19 +281,8 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
         return data;
     }
 
-    private bool TableExists(SqliteConnection connection)
-    {
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = @Name)";
-        AddParameter(cmd, "Name", options.Table);
-
-        return cmd.ExecuteScalar() is 1L;
-    }
-
     private void ExecuteUpdate(DbConnection connection, DbTransaction? transaction, string key, string? value)
     {
-        ArgumentException.ThrowIfNullOrEmpty(key);
-
         using var cmd = connection.CreateCommand();
         cmd.CommandText = updateSql;
         cmd.Transaction = transaction;
@@ -279,8 +293,6 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
     private async ValueTask ExecuteUpdateAsync(DbConnection connection, DbTransaction? transaction, string key, string? value)
     {
-        ArgumentException.ThrowIfNullOrEmpty(key);
-
 #pragma warning disable CA2007
         await using var cmd = connection.CreateCommand();
 #pragma warning restore CA2007
@@ -293,8 +305,6 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
     private async ValueTask ExecuteDeleteAsync(DbConnection connection, DbTransaction? transaction, string key)
     {
-        ArgumentException.ThrowIfNullOrEmpty(key);
-
 #pragma warning disable CA2007
         await using var cmd = connection.CreateCommand();
 #pragma warning restore CA2007
