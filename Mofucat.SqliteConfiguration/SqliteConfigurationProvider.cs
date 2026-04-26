@@ -14,10 +14,10 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
     private readonly object sync = new();
 #endif
 
-    private readonly SqliteConfigurationOptions options;
     private readonly string connectionString;
 
     private readonly string quotedTableName;
+
     private readonly string selectSql;
     private readonly string updateSql;
     private readonly string deleteSql;
@@ -28,12 +28,11 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
     public SqliteConfigurationProvider(SqliteConfigurationOptions options)
     {
-        this.options = options;
-        quotedTableName = QuoteIdentifier(this.options.Table);
+        quotedTableName = $"\"{options.Table.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
         var builder = new SqliteConnectionStringBuilder
         {
-            DataSource = this.options.Path,
+            DataSource = options.Path,
             Pooling = true,
             Cache = SqliteCacheMode.Shared
         };
@@ -45,9 +44,6 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
         InitializeDatabase();
     }
-
-    private static string QuoteIdentifier(string value) =>
-        $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
     //--------------------------------------------------------------------------------
     // Override
@@ -91,13 +87,6 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
     public async ValueTask BulkUpdateAsync(IEnumerable<KeyValuePair<string, object?>> source)
     {
-        // TODO remove ToArray
-        var entries = source.Select(static pair => new KeyValuePair<string, string?>(pair.Key, pair.Value?.ToString())).ToArray();
-        if (entries.Length == 0)
-        {
-            return;
-        }
-
 #pragma warning disable CA2007
         await using var con = new SqliteConnection(connectionString);
 #pragma warning restore CA2007
@@ -106,16 +95,20 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
         await using var tx = await con.BeginTransactionAsync().ConfigureAwait(false);
 #pragma warning restore CA2007
 
-        foreach (var pair in entries)
+        var updated = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var pair in source)
         {
-            await ExecuteUpdateAsync(con, tx, pair.Key, pair.Value).ConfigureAwait(false);
+            var stringValue = pair.Value?.ToString();
+            await ExecuteUpdateAsync(con, tx, pair.Key, stringValue).ConfigureAwait(false);
+            updated[pair.Key] = stringValue;
         }
 
         await tx.CommitAsync().ConfigureAwait(false);
 
         lock (sync)
         {
-            foreach (var pair in entries)
+            foreach (var pair in updated)
             {
                 Data[pair.Key] = pair.Value;
             }
@@ -146,13 +139,6 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 
     public async ValueTask BulkDeleteAsync(IEnumerable<string> keys)
     {
-        // TODO remove ToArray
-        var keyArray = keys.ToArray();
-        if (keyArray.Length == 0)
-        {
-            return;
-        }
-
 #pragma warning disable CA2007
         await using var con = new SqliteConnection(connectionString);
 #pragma warning restore CA2007
@@ -161,16 +147,24 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
         await using var tx = await con.BeginTransactionAsync().ConfigureAwait(false);
 #pragma warning restore CA2007
 
-        foreach (var key in keyArray)
+        var deleted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var key in keys)
         {
             await ExecuteDeleteAsync(con, tx, key).ConfigureAwait(false);
+            _ = deleted.Add(key);
+        }
+
+        if (deleted.Count == 0)
+        {
+            return;
         }
 
         await tx.CommitAsync().ConfigureAwait(false);
 
         lock (sync)
         {
-            foreach (var key in keyArray)
+            foreach (var key in deleted)
             {
                 Data.Remove(key);
             }
@@ -208,33 +202,9 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
         using var con = new SqliteConnection(connectionString);
         con.Open();
 
-        var tableExists = TableExists(con);
-
-        using (var cmd = con.CreateCommand())
-        {
-            cmd.CommandText = $"CREATE TABLE IF NOT EXISTS {quotedTableName} (Key TEXT NOT NULL COLLATE NOCASE PRIMARY KEY, Value TEXT)";
-            _ = cmd.ExecuteNonQuery();
-        }
-
-        if (!tableExists && (options.Data.Count > 0))
-        {
-            using var tx = con.BeginTransaction();
-            foreach (var pair in options.Data)
-            {
-                ExecuteUpdate(con, tx, pair.Key, pair.Value);
-            }
-
-            tx.Commit();
-        }
-    }
-
-    private bool TableExists(SqliteConnection connection)
-    {
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = @Name)";
-        AddParameter(cmd, "Name", options.Table);
-
-        return cmd.ExecuteScalar() is 1L;
+        using var cmd = con.CreateCommand();
+        cmd.CommandText = $"CREATE TABLE IF NOT EXISTS {quotedTableName} (Key TEXT NOT NULL COLLATE NOCASE PRIMARY KEY, Value TEXT)";
+        _ = cmd.ExecuteNonQuery();
     }
 
     private Dictionary<string, string?> LoadData()
@@ -279,16 +249,6 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
         }
 
         return data;
-    }
-
-    private void ExecuteUpdate(DbConnection connection, DbTransaction? transaction, string key, string? value)
-    {
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = updateSql;
-        cmd.Transaction = transaction;
-        AddParameter(cmd, "Key", key);
-        AddParameter(cmd, "Value", value);
-        _ = cmd.ExecuteNonQuery();
     }
 
     private async ValueTask ExecuteUpdateAsync(DbConnection connection, DbTransaction? transaction, string key, string? value)

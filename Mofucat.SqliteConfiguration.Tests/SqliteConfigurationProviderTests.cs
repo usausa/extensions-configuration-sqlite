@@ -8,29 +8,15 @@ using Xunit;
 public sealed class SqliteConfigurationProviderTests
 {
     [Fact]
-    public void GetRequiredConfigurationOperatorWithoutProviderThrows()
-    {
-        var root = new ConfigurationBuilder()
-            .AddInMemoryCollection()
-            .Build();
-
-        var exception = Assert.Throws<InvalidOperationException>(root.GetRequiredConfigurationOperator);
-
-        Assert.Contains("No IConfigurationOperator provider", exception.Message, StringComparison.Ordinal);
-        Assert.False(root.TryGetConfigurationOperator(out var configurationOperator));
-        Assert.Null(configurationOperator);
-    }
-
-    [Fact]
     public void NewTableUsesCaseInsensitivePrimaryKey()
     {
-        using var database = new TemporarySqliteDatabase();
-        using var root = CreateConfiguration(database.Path);
+        using var db = new TemporarySqliteDatabase();
+        using var root = CreateConfiguration(db.Path);
 
-        using var connection = OpenConnection(database.Path);
-        InsertRow(connection, "MyKey", "1");
+        using var con = OpenConnection(db.Path);
+        InsertRow(con, "MyKey", "1");
 
-        var exception = Assert.Throws<SqliteException>(() => InsertRow(connection, "mykey", "2"));
+        var exception = Assert.Throws<SqliteException>(() => InsertRow(con, "myKey", "2"));
 
         Assert.Contains("UNIQUE", exception.Message, StringComparison.Ordinal);
     }
@@ -38,79 +24,81 @@ public sealed class SqliteConfigurationProviderTests
     [Fact]
     public async Task UpdateAndDeleteAsyncUpdatesDatabaseAndConfiguration()
     {
-        using var database = new TemporarySqliteDatabase();
-        using var root = CreateConfiguration(database.Path);
-        var configurationOperator = root.GetRequiredConfigurationOperator();
+        using var db = new TemporarySqliteDatabase();
+        using var root = CreateConfiguration(db.Path);
+        var configurationOperator = root.GetConfigurationOperator();
 
-        await configurationOperator.UpdateAsync("Dynamic:Value1", "Updated").ConfigureAwait(false);
+        await configurationOperator.UpdateAsync("Dynamic:Value1", "Updated");
 
         Assert.Equal("Updated", root["dynamic:value1"]);
-        Assert.Equal("Updated", GetValue(database.Path, "Dynamic:Value1"));
+        Assert.Equal("Updated", GetValue(db.Path, "Dynamic:Value1"));
 
-        await configurationOperator.DeleteAsync("Dynamic:Value1").ConfigureAwait(false);
+        await configurationOperator.DeleteAsync("Dynamic:Value1");
 
         Assert.Null(root["Dynamic:Value1"]);
-        Assert.Null(GetValue(database.Path, "Dynamic:Value1"));
+        Assert.Null(GetValue(db.Path, "Dynamic:Value1"));
     }
 
     [Fact]
     public async Task BulkUpdateAndDeleteAsyncUpdatesDatabaseAndConfiguration()
     {
-        using var database = new TemporarySqliteDatabase();
-        using var root = CreateConfiguration(database.Path);
-        var configurationOperator = root.GetRequiredConfigurationOperator();
+        using var db = new TemporarySqliteDatabase();
+        using var root = CreateConfiguration(db.Path);
+        var configurationOperator = root.GetConfigurationOperator();
 
         await configurationOperator.BulkUpdateAsync(
             new KeyValuePair<string, object?>("Feature:A", true),
-            new KeyValuePair<string, object?>("Feature:B", false)).ConfigureAwait(false);
+            new KeyValuePair<string, object?>("Feature:B", false));
 
         Assert.Equal("True", root["Feature:A"]);
         Assert.Equal("False", root["Feature:B"]);
 
-        await configurationOperator.BulkDeleteAsync("Feature:A", "Feature:B").ConfigureAwait(false);
+        await configurationOperator.BulkDeleteAsync("Feature:A", "Feature:B");
 
         Assert.Null(root["Feature:A"]);
         Assert.Null(root["Feature:B"]);
     }
 
     [Fact]
+    public async Task BulkUpdateAndDeleteAsyncAcceptsLazy()
+    {
+        using var db = new TemporarySqliteDatabase();
+        using var root = CreateConfiguration(db.Path);
+        var configurationOperator = root.GetConfigurationOperator();
+
+        await configurationOperator.BulkUpdateAsync(CreateEntries());
+
+        Assert.Equal("1", root["Lazy:A"]);
+        Assert.Equal("2", root["Lazy:B"]);
+
+        await configurationOperator.BulkDeleteAsync(CreateKeys());
+
+        Assert.Null(root["Lazy:A"]);
+        Assert.Null(root["Lazy:B"]);
+    }
+
+    [Fact]
     public async Task ReloadAsyncReflectsExternalDatabaseChanges()
     {
-        using var database = new TemporarySqliteDatabase();
-        using var root = CreateConfiguration(database.Path);
-        var configurationOperator = root.GetRequiredConfigurationOperator();
+        using var db = new TemporarySqliteDatabase();
+        using var root = CreateConfiguration(db.Path);
+        var configurationOperator = root.GetConfigurationOperator();
 
-        using (var connection = OpenConnection(database.Path))
+        await using (var con = OpenConnection(db.Path))
         {
-            InsertRow(connection, "External:Value", "42");
+            InsertRow(con, "External:Value", "42");
         }
 
         Assert.Null(root["External:Value"]);
 
-        await configurationOperator.ReloadAsync().ConfigureAwait(false);
+        await configurationOperator.ReloadAsync();
 
         Assert.Equal("42", root["External:Value"]);
     }
 
-    [Fact]
-    public void SeedDataIsAppliedOnlyWhenTheTableIsCreated()
-    {
-        using var database = new TemporarySqliteDatabase();
-
-        using var firstRoot = CreateConfiguration(database.Path, options =>
-        {
-            options.Data.Add(new KeyValuePair<string, string?>("Seed:Value", "First"));
-        });
-
-        Assert.Equal("First", firstRoot["Seed:Value"]);
-
-        using var secondRoot = CreateConfiguration(database.Path, options =>
-        {
-            options.Data.Add(new KeyValuePair<string, string?>("Seed:Value", "Second"));
-        });
-
-        Assert.Equal("First", secondRoot["Seed:Value"]);
-    }
+    //--------------------------------------------------------------------------------
+    // Helper
+    //--------------------------------------------------------------------------------
 
     private static ConfigurationRoot CreateConfiguration(string path, Action<SqliteConfigurationOptions>? configure = null) =>
         (ConfigurationRoot)new ConfigurationBuilder()
@@ -122,19 +110,31 @@ public sealed class SqliteConfigurationProviderTests
             })
             .Build();
 
+    private static IEnumerable<KeyValuePair<string, object?>> CreateEntries()
+    {
+        yield return new KeyValuePair<string, object?>("Lazy:A", 1);
+        yield return new KeyValuePair<string, object?>("Lazy:B", 2);
+    }
+
+    private static IEnumerable<string> CreateKeys()
+    {
+        yield return "Lazy:A";
+        yield return "Lazy:B";
+    }
+
     private static object? GetValue(string path, string key)
     {
-        using var connection = OpenConnection(path);
-        using var command = connection.CreateCommand();
+        using var con = OpenConnection(path);
+        using var command = con.CreateCommand();
         command.CommandText = "SELECT Value FROM setting WHERE Key = @Key";
         AddParameter(command, "Key", key);
 
         return command.ExecuteScalar();
     }
 
-    private static void InsertRow(SqliteConnection connection, string key, string? value)
+    private static void InsertRow(SqliteConnection con, string key, string? value)
     {
-        using var command = connection.CreateCommand();
+        using var command = con.CreateCommand();
         command.CommandText = "INSERT INTO setting(Key, Value) VALUES (@Key, @Value)";
         AddParameter(command, "Key", key);
         AddParameter(command, "Value", value);
@@ -150,9 +150,9 @@ public sealed class SqliteConfigurationProviderTests
             Pooling = true
         };
 
-        var connection = new SqliteConnection(builder.ConnectionString);
-        connection.Open();
-        return connection;
+        var con = new SqliteConnection(builder.ConnectionString);
+        con.Open();
+        return con;
     }
 
     private static void AddParameter(SqliteCommand command, string name, object? value)
