@@ -1,10 +1,5 @@
 namespace Mofucat.SqliteConfiguration.Tests;
 
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Configuration;
-
-using Xunit;
-
 public sealed class SqliteConfigurationProviderTests
 {
     [Fact]
