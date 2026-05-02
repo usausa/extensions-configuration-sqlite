@@ -2,6 +2,8 @@ namespace Mofucat.SqliteConfiguration;
 
 public interface IConfigurationOperator
 {
+    ValueTask UpdateAsync(string key, string? value);
+
     ValueTask UpdateAsync(string key, object? value);
 
     ValueTask BulkUpdateAsync(params KeyValuePair<string, object?>[] source);

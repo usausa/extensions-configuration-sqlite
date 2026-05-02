@@ -63,20 +63,21 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
     // Operator
     //--------------------------------------------------------------------------------
 
-    public async ValueTask UpdateAsync(string key, object? value)
-    {
-        var stringValue = value?.ToString();
+    public ValueTask UpdateAsync(string key, object? value) =>
+        UpdateAsync(key, value?.ToString());
 
+    public async ValueTask UpdateAsync(string key, string? value)
+    {
 #pragma warning disable CA2007
         await using var con = new SqliteConnection(connectionString);
 #pragma warning restore CA2007
         await con.OpenAsync().ConfigureAwait(false);
 
-        await ExecuteUpdateAsync(con, null, key, stringValue).ConfigureAwait(false);
+        await ExecuteUpdateAsync(con, null, key, value).ConfigureAwait(false);
 
         lock (sync)
         {
-            Data[key] = stringValue;
+            Data[key] = value;
         }
 
         OnReload();
@@ -245,7 +246,9 @@ internal sealed class SqliteConfigurationProvider : ConfigurationProvider, IConf
 #pragma warning restore CA2007
         while (await reader.ReadAsync().ConfigureAwait(false))
         {
-            data[reader.GetString(0)] = await reader.IsDBNullAsync(1).ConfigureAwait(false) ? null : reader.GetString(1);
+#pragma warning disable CA1849
+            data[reader.GetString(0)] = reader.IsDBNull(1) ? null : reader.GetString(1);
+#pragma warning restore CA1849
         }
 
         return data;
